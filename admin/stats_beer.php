@@ -246,7 +246,7 @@ include 'left_bar.php';
 	            array_push($beers[$pour->get_beerId()], $pour);
 	            foreach ($groups as $group){
 	                if(!in_array($group, $beers[$pour->get_beerId()])){
-	                    $beers[$pour->get_beerId()]["-99"] = $pour->get_beerName();
+	                    $beers[$pour->get_beerId()]["-99"] = str_replace("'", "\'", $pour->get_beerName());
 	                    foreach ($pours as $temp){
 	                        if( $temp->get_beerId() != $pour->get_beerId() ) continue;
 	                        if( $groupBy != 'beerId' &&  $groupBy != 'beerStyle' && getGroupValue($groupBy, $temp) != $group )continue;
