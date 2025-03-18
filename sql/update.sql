@@ -1211,6 +1211,8 @@ CREATE TABLE IF NOT EXISTS `gasTanks` (
 	FOREIGN KEY (`gasTankTypeId`) REFERENCES gasTankTypes(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB	DEFAULT CHARSET=latin1;
  
+CALL addColumnIfNotExist(DATABASE(), 'gasTanks', 'loadCellUpdateVariance', 'decimal(10,5) NULL' );
+CALL addColumnIfNotExist(DATABASE(), 'tapconfig', 'loadCellUpdateVariance', 'decimal(10,5) NULL' );
  
 CREATE OR REPLACE VIEW vwGasTanks 
 AS
@@ -1806,8 +1808,6 @@ INSERT IGNORE INTO `beerStyles`( name, catNum, category, beerStyleList, ogMin, o
 ( 'Cider with Herbs/Spices', 'C2E', 'Specialty Cider and Perry', 'BJCP 2015', '1.045', '1.070', '0.995', '1.010', '5', '9', '0', '0', '0', '0', NOW(), NOW() ),
 ( 'Specialty Cider/Perry', 'C2F', 'Specialty Cider and Perry', 'BJCP 2015', '1.045', '1.100', '0.995', '1.020', '5', '12', '0', '0', '0', '0', NOW(), NOW() );
 
-CALL addColumnIfNotExist(DATABASE(), 'gasTanks', 'loadCellUpdateVariance', 'decimal(10,5) NULL' );
-CALL addColumnIfNotExist(DATABASE(), 'tapconfig', 'loadCellUpdateVariance', 'decimal(10,5) NULL' );
 
 INSERT IGNORE INTO `config` (`configName`, `configValue`, `displayName`, `showOnPanel`, `createdDate`, `modifiedDate`) VALUES
 ( 'samplePourSize', '0', 'Size of sample Pour', '0', NOW(), NOW() );
