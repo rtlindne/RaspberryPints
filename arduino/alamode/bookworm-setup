@@ -1,0 +1,28 @@
+#use AlamodeAvrdude.config to specify the alamode board settings
+
+#setup the boards.txt file in Bookworm to see alamode
+echo >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.name=AlaMode >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.upload.protocol=alamode >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.upload.maximum_size=32256 >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.upload.speed=115200 >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.low_fuses=0xff >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.high_fuses=0xde >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.extended_fuses=0x05 >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.path=optiboot >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.file=optiboot_atmega328.hex >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.unlock_bits=0x3F >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.bootloader.lock_bits=0x0F >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.build.mcu=atmega328p >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.build.f_cpu=16000000L >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.build.core=arduino >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo alamode.build.variant=standard >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo "##############################################################" >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+echo >> /usr/share/arduino/hardware/arduino/avr/boards.txt
+
+sed -i'bk' -e's/console=serial0,115200.//'   /boot/firmware/cmdline.txt
+#disabled by default in bookworm
+#systemctl stop serial-getty@ttAMA0.service
+#systemctl disable serial-getty@ttyAMA0.service
+cp 80-alamode.rules /etc/udev/rules.d
