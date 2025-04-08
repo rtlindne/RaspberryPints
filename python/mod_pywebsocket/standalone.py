@@ -372,7 +372,7 @@ class WebSocketServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     # Overrides BaseHTTPServer.HTTPServer.allow_reuse_address
     allow_reuse_address = True
 
-    def __init__(self, options):
+    def __init__(self, options, logger):
         """Override SocketServer.TCPServer.__init__ to set SSL enabled
         socket object to self.socket before server_bind and server_activate,
         if necessary.
@@ -392,6 +392,7 @@ class WebSocketServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
             for warning in warnings:
                 logging.warning('Warning in source loading: %s' % warning)
 
+        util.set_custom_logger(logger)
         self._logger = util.get_class_logger(self)
 
         self.request_queue_size = options.request_queue_size

@@ -64,7 +64,7 @@ except ImportError:
 def get_stack_trace():
     """Get the current stack trace as string.
     """
-    return traceback.print_exc()
+    return traceback.format_exc()
 
 
 def prepend_message_to_exception(message, exc):
@@ -141,11 +141,19 @@ def wrap_popen3_for_win(cygwin_path):
 def hexify(s):
     return' '.join(map(lambda x: '%02x' % ord(x), str(s)))
 
-
+_customLogger = None
 def get_class_logger(o):
+    global _customLogger
+    if _customLogger is not None:
+        return _customLogger
+    if o is None:
+        return logging.getLogger("Websocket.UTIL")
     return logging.getLogger(
         '%s.%s' % (o.__class__.__module__, o.__class__.__name__))
 
+def set_custom_logger(logger):
+    global _customLogger
+    _customLogger = logger
 
 class NoopMasker(object):
     """A masking object that has the same interface as RepeatedXorMasker but
