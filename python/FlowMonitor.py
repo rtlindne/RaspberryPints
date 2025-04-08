@@ -105,6 +105,7 @@ class FlowMonitor(object):
                 return
         hexfile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.cpp.hex"
         inofile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.ino"
+        addAvrConfig = config['pints.dir'] + "/arduino/alamode/AlamodeAvrdude.config"
         
         if not os.path.isfile(hexfile):
             hexfile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.ino.standard.hex"
@@ -114,7 +115,7 @@ class FlowMonitor(object):
         elif os.path.isfile(inofile) and os.access(inofile, os.R_OK) and os.path.getmtime(inofile) > os.path.getmtime(hexfile):
             log("Ino newer than Hex. manual upload assumed")
         else:
-            cmdline = "/usr/share/arduino/hardware/tools/avrdude -C/usr/share/arduino/hardware/tools/avrdude.conf -patmega328p -calamode -P"+self.port+" -b115200 -D -Uflash:w:"
+            cmdline = "/usr/share/arduino/hardware/tools/avrdude -C/usr/share/arduino/hardware/tools/avrdude.conf -C+" + addAvrConfig + " -patmega328p -calamode -P" + self.port + " -b115200 -D -Uflash:w:"
 
             cmdline = cmdline + hexfile
             cmdline = cmdline + ":i"
