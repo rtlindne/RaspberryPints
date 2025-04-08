@@ -105,14 +105,23 @@ def connectDB():
         
     return con
 
+class WebServerFormatLogger ():
+    #these function are used by the websocket only and we really only want to log info when we debug
+    def info(self, msg, *args, **kwargs):
+        Logger().debug(msg % args, process="WEBSOC", logDB=False, debugConfig='websocket.debug', logWho="WEBSOC")
+    def debug(self, msg, *args, **kwargs):
+        Logger().debug(msg % args, process="WEBSOC", logDB=False, debugConfig='websocket.debug', logWho="WEBSOC")
+    def error(self, msg, *args, **kwargs):
+        Logger().log(msg % args, process="WEBSOC", logDB=True, logWho="WEBSOC")
+
 loggerLastClean = None
-class Logger ():
-    def debug(self, msg, process="PintDispatch", logDB=True, debugConfig='dispatch.debug'):
+class Logger ():   
+    def debug(self, msg, process="PintDispatch", logDB=True, debugConfig='dispatch.debug', logWho="RPINTS"):
         if(config[debugConfig]):
-            self.log(msg, process, True, logDB)
+            self.log(msg, process, True, logDB, logWho)
                      
-    def log(self, msg, process="PintDispatch", isDebug=False, logDB=True):
-        print (datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + " RPINTS: " + msg) 
+    def log(self, msg, process="PintDispatch", isDebug=False, logDB=True, logWho="RPINTS"):
+        print (datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + " " + logWho + " " + msg) 
         sys.stdout.flush() 
         if logDB:
             self.logDB(msg, process, isDebug)
@@ -561,7 +570,7 @@ class PintDispatch(object):
     def sendflowcount(self, rfid, pin, count):
         if self.OPTION_RESTART_FANTIMER_AFTER_POUR:
             self.fanControl.restartNeeded(True)
-        msg = "RPU:FLOW:" + str(pin) + "=" + str(count) +":" + rfid
+        msg = "RPU:FLOW:" + str(pin) + "=" + str(count) + ":" + str(rfid)
         debug("count update: "  + msg.rstrip())
         self.sendMCastMessage(msg)
         
@@ -611,7 +620,7 @@ class PintDispatch(object):
         options.is_executable_method = None
         os.chdir(options.document_root)
         _configure_logging(options)        
-        server = WebSocketServer(options)
+        server = WebSocketServer(options, WebServerFormatLogger())
         server.serve_forever()
 
     # main setup
