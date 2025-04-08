@@ -93,7 +93,7 @@ include 'top_menu.php';
                 <table style="width:800px" id="tableList">
                 	<thead>
                         <tr>
-                            <th style="width:30%; vertical-align: middle;">Address</th>
+                            <th style="width:30%; vertical-align: middle;">HostName/IP Address(Blank for all IPs)</th>
                             <th style="width:30%; vertical-align: middle;">Port</th>
                             <th style="width:30%; vertical-align: middle;">AllowedConnections</th>
                             <th style="width:10%; vertical-align: middle;"></th>
