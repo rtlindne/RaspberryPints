@@ -29,7 +29,9 @@ if (isset ( $_POST ['save'] )) {
 	        $ii++;
 	        continue;
 	    }
-	    if($_POST ['type'][$ii] == 1 && !$tapManager->saveTapLoadCellInfo($_POST ['id'][$ii], $_POST['loadCellCmdPin'][$ii], $_POST['loadCellRspPin'][$ii], $_POST['loadCellScaleRatio'][$ii], $_POST['loadCellTareOffset'][$ii], $_POST['loadCellUnit'][$ii], $_POST['loadCellUpdateVariance'][$ii]))$error=true;
+	    if($_POST ['type'][$ii] == 1 && isset($_POST ['loadCellCmdPin'][$ii]) && $_POST ['loadCellCmdPin'][$ii] <> ''){
+	        if(!$tapManager->saveTapLoadCellInfo($_POST ['id'][$ii], $_POST['loadCellCmdPin'][$ii], $_POST['loadCellRspPin'][$ii], $_POST['loadCellScaleRatio'][$ii], $_POST['loadCellTareOffset'][$ii], $_POST['loadCellUnit'][$ii], $_POST['loadCellUpdateVariance'][$ii]))$error=true;
+	    }
 	    if($_POST ['type'][$ii] == 2 && isset($_POST ['gtId'][$ii]) && $_POST ['gtId'][$ii] <> '' ){
 	        if( $_POST['oldId'][$ii] != $_POST['gtId'][$ii])if(!$gasTankManager->saveGasTankLoadCellInfo($_POST ['oldId'][$ii], 0, 0, 0, 0, 0))$error=true;
 	        
