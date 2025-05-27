@@ -635,17 +635,17 @@ class PintDispatch(object):
 
         log("starting WS server")
         t = threading.Thread(target=self.spawnWebSocketServer)
-        t.setDaemon(True)
+        t.daemon = True
         t.start()
 
         log("starting device monitors...")
         t = threading.Thread(target=self.spawn_flowmonitor)
-        t.setDaemon(True)
+        t.daemon = True
         t.start()
             
         log("starting command server")
         t = threading.Thread(target=self.commandserver.serve_forever)
-        t.setDaemon(True)
+        t.daemon = True
         t.start()
         
         log("starting fan control")
