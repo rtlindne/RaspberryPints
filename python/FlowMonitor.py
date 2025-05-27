@@ -102,10 +102,17 @@ class FlowMonitor(object):
     
     def setup(self):
         if config['flowmon.port'] == "MQTT":
-                return
-        hexfile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.cpp.hex"
-        inofile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.ino"
-        addAvrConfig = config['pints.dir'] + "/arduino/alamode/AlamodeAvrdude.config"
+            return
+        hexfile   = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.cpp.hex"
+        inofile   = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.ino"
+        avrPath   = config['pints.dir'] + "/arduino/avrdude/avrdude"
+        #if the system is 64 bit we need to use that version
+        if sys.maxsize > 2**32:
+            avrPath = avrPath + "64"
+        avrConfig = config['pints.dir'] + "/arduino/avrdude/avrdude.conf"
+        programmer = "alamode"
+        if "ttyS0" not in self.port:
+            programmer = "arduino"
         
         if not os.path.isfile(hexfile):
             hexfile = config['pints.dir'] + "/arduino/raspberrypints/raspberrypints.ino.standard.hex"
@@ -115,10 +122,8 @@ class FlowMonitor(object):
         elif os.path.isfile(inofile) and os.access(inofile, os.R_OK) and os.path.getmtime(inofile) > os.path.getmtime(hexfile):
             log("Ino newer than Hex. manual upload assumed")
         else:
-            cmdline = "/usr/share/arduino/hardware/tools/avrdude -C/usr/share/arduino/hardware/tools/avrdude.conf -C+" + addAvrConfig + " -patmega328p -calamode -P" + self.port + " -b115200 -D -Uflash:w:"
-
-            cmdline = cmdline + hexfile
-            cmdline = cmdline + ":i"
+            cmdline = "{0} -C{1} -patmega328p -c{2} -P{3} -b115200 -D -Uflash:w:{4}:i".format(
+                avrPath, avrConfig, programmer, self.port, hexfile)
             output = ""
             if os.path.isfile(hexfile) and os.access(hexfile, os.R_OK):
                 debug("resetting alamode to try to force it to listen to us...")
