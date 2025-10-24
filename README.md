@@ -1289,23 +1289,1746 @@ Make sure your user has permission to access the serial port on Raspberry Pi (su
 [PySerial Documentation](https://pyserial.readthedocs.io/)
 
 ---
+
+# Connecting RFID Readers to Raspberry Pi
+
+## Overview
+
+RFID (Radio-Frequency Identification) readers allow users to scan RFID tags/cards to track who is pouring beer. RaspberryPints supports RC522 RFID readers connected via SPI.
+
+---
+
+## Parts Needed
+
+### 1. **RC522 RFID Reader Module**
+- Compatible with 13.56MHz RFID tags (ISO 14443A)
+- Common modules: MFRC522
+
+### 2. **RFID Tags/Cards**
+- 13.56MHz tags (keyfobs, cards, stickers)
+- Compatible with RC522 reader
+
+### 3. **Jumper Wires**
+- Female-to-female jumper wires for connecting to Raspberry Pi GPIO
+
+### 4. **Raspberry Pi**
+- Any model with GPIO pins (Pi 3, Pi 4, Zero W, etc.)
+
+---
+
+## Wiring Diagram
+
+### RC522 to Raspberry Pi GPIO Connection
+
+```
+RC522 Module          Raspberry Pi GPIO
+─────────────────────────────────────────────
+SDA (SS)     ──────►  GPIO 8  (Pin 24) - Chip Select
+SCK          ──────►  GPIO 11 (Pin 23) - SPI Clock
+MOSI         ──────►  GPIO 10 (Pin 19) - SPI MOSI
+MISO         ──────►  GPIO 9  (Pin 21) - SPI MISO
+IRQ          ──────►  Not Connected (optional)
+GND          ──────►  GND     (Pin 6, 9, 14, 20, or 25)
+RST          ──────►  GPIO 25 (Pin 22) - Reset (configurable)
+3.3V         ──────►  3.3V    (Pin 1 or 17)
+```
+
+**⚠️ IMPORTANT**: RC522 operates at **3.3V** - Do NOT connect to 5V or you will damage the module!
+
+### Visual Pin Layout
+
+```
+    RC522 Module
+    ┌─────────────┐
+    │ SDA  SCK    │
+    │ MOSI MISO   │
+    │ IRQ  GND    │
+    │ RST  3.3V   │
+    └─────────────┘
+```
+
+### Raspberry Pi GPIO Pinout (Top View)
+
+```
+     3.3V (1)  ●  ● (2)  5V
+    GPIO2 (3)  ●  ● (4)  5V
+    GPIO3 (5)  ●  ● (6)  GND
+    GPIO4 (7)  ●  ● (8)  GPIO14
+      GND (9)  ●  ● (10) GPIO15
+   GPIO17 (11) ●  ● (12) GPIO18
+   GPIO27 (13) ●  ● (14) GND
+   GPIO22 (15) ●  ● (16) GPIO23
+     3.3V (17) ●  ● (18) GPIO24
+   GPIO10 (19) ●  ● (20) GND
+    GPIO9 (21) ●  ● (22) GPIO25  ◄── RST
+   GPIO11 (23) ●  ● (24) GPIO8   ◄── SDA
+      GND (25) ●  ● (26) GPIO7
+```
+
+---
+
+## Step-by-Step Connection Instructions
+
+### 1. **Enable SPI on Raspberry Pi**
+
+The installer enables this automatically, or manually:
+
+```bash
+sudo raspi-config
+# Navigate to: Interface Options → SPI → Enable
+```
+
+Verify SPI is enabled:
+```bash
+lsmod | grep spi
+# Should show: spi_bcm2835
+```
+
+### 2. **Connect the RC522 Module**
+
+**Power Connections**:
+1. RC522 **3.3V** → Pi **Pin 1** (3.3V)
+2. RC522 **GND** → Pi **Pin 6** (GND)
+
+**SPI Connections**:
+3. RC522 **SDA** → Pi **Pin 24** (GPIO 8)
+4. RC522 **SCK** → Pi **Pin 23** (GPIO 11)
+5. RC522 **MOSI** → Pi **Pin 19** (GPIO 10)
+6. RC522 **MISO** → Pi **Pin 21** (GPIO 9)
+
+**Control Connection**:
+7. RC522 **RST** → Pi **Pin 22** (GPIO 25)
+
+**IRQ** pin can remain unconnected (not used by default).
+
+### 3. **Install Required Python Libraries**
+
+The installer handles this, or manually:
+
+```bash
+cd /var/www/html/python/SPI-Py
+sudo python setup.py install
+```
+
+### 4. **Configure RFID Reader in RaspberryPints**
+
+1. Go to **Admin → Advanced Hardware → RFID Readers**
+2. Click **Add RFID Reader**
+3. Configure:
+   - **Name**: "Main Reader" (or descriptive name)
+   - **Type**: RC522 (0)
+   - **Pin**: 8 (SDA pin number)
+   - **Priority**: 0 (for single reader)
+4. Click **Save**
+
+### 5. **Register RFID Tags**
+
+1. Go to **Admin → User Management → Users**
+2. Add or edit a user
+3. Have user scan their RFID tag while on this page
+4. The tag ID will auto-populate
+5. Save the user
+
+---
+
+## Multiple RFID Readers
+
+To use multiple RFID readers:
+
+1. Each reader needs a unique **SDA (Chip Select)** pin
+2. All readers share **SCK, MOSI, MISO** pins
+3. Common SDA pins: GPIO 8, GPIO 7, GPIO 5
+
+**Example 2-Reader Setup**:
+- Reader 1: SDA → GPIO 8 (Pin 24)
+- Reader 2: SDA → GPIO 7 (Pin 26)
+- Both share: SCK, MOSI, MISO, GND, 3.3V
+
+---
+
+## Troubleshooting
+
+**RFID reader not detected**:
+1. Check SPI is enabled: `lsmod | grep spi`
+2. Verify 3.3V connection (NOT 5V!)
+3. Check all wire connections
+4. Test with: `ls /dev/spi*` (should show `/dev/spidev0.0`)
+
+**Tags not scanning**:
+1. Ensure tags are 13.56MHz (not 125kHz)
+2. Hold tag within 1-2cm of reader antenna
+3. Check debug logs in Admin → RPints Log
+
+---
+
+# Connecting DS18B20 Temperature Probes
+
+## Overview
+
+DS18B20 digital temperature sensors provide accurate temperature monitoring for kegs, fermenters, or ambient conditions. They use the 1-wire protocol and can be daisy-chained on a single GPIO pin.
+
+---
+
+## Parts Needed
+
+### 1. **DS18B20 Temperature Sensor**
+- Waterproof version recommended for keg/fermenter monitoring
+- Available as bare sensor or waterproof probe
+- Operating range: -55°C to +125°C (-67°F to +257°F)
+
+### 2. **4.7kΩ Resistor**
+- Pull-up resistor for 1-wire bus
+- Required for stable operation
+
+### 3. **Jumper Wires**
+- For connecting to Raspberry Pi GPIO
+
+### 4. **Optional: Terminal Block**
+- For easier probe swapping and organization
+
+---
+
+## Wiring Diagram
+
+### Single DS18B20 Connection
+
+```
+DS18B20 Probe           Raspberry Pi GPIO
+─────────────────────────────────────────────
+Red (VCC)      ──────►  3.3V    (Pin 1 or 17)
+Yellow (Data)  ──────►  GPIO 4  (Pin 7) - Default 1-wire pin
+                           │
+                           └──[4.7kΩ resistor]──► 3.3V
+Black (GND)    ──────►  GND     (Pin 6, 9, 14, 20, or 25)
+```
+
+### Multiple DS18B20 Sensors (Daisy Chain)
+
+```
+              ┌─ 3.3V ─┬─[4.7kΩ]─┬─ GPIO 4
+              │         │         │
+    Probe 1:  Red ──────┤         │
+              Yellow ───┴─────────┘
+              Black ─── GND
+              
+    Probe 2:  Red ──────┤         │
+              Yellow ───┴─────────┘
+              Black ─── GND
+              
+    Probe 3:  Red ──────┤         │
+              Yellow ───┴─────────┘
+              Black ─── GND
+```
+
+**Note**: All probes share the same GPIO 4 (1-wire bus). One 4.7kΩ resistor is used for all probes.
+
+---
+
+## Step-by-Step Connection Instructions
+
+### 1. **Enable 1-Wire Interface**
+
+The installer enables this automatically, or manually:
+
+```bash
+sudo raspi-config
+# Navigate to: Interface Options → 1-Wire → Enable
+```
+
+Or edit `/boot/config.txt`:
+```bash
+sudo nano /boot/config.txt
+# Add this line:
+dtoverlay=w1-gpio
+```
+
+Reboot:
+```bash
+sudo reboot
+```
+
+### 2. **Physical Connection**
+
+**For Single Probe**:
+1. Connect probe **Red** wire to Pi **Pin 1** (3.3V)
+2. Connect probe **Yellow** wire to Pi **Pin 7** (GPIO 4)
+3. Connect probe **Black** wire to Pi **Pin 6** (GND)
+4. Install 4.7kΩ resistor between **Yellow (Data)** and **Red (3.3V)**
+
+**For Multiple Probes**:
+1. Connect all **Red** wires together to **3.3V**
+2. Connect all **Yellow** wires together to **GPIO 4**
+3. Connect all **Black** wires together to **GND**
+4. One 4.7kΩ resistor between data line and 3.3V
+
+### 3. **Verify Probes Are Detected**
+
+```bash
+# Load kernel modules (if not auto-loaded)
+sudo modprobe w1-gpio
+sudo modprobe w1-therm
+
+# List detected probes
+ls /sys/bus/w1/devices/
+```
+
+You should see directories like `28-xxxxxxxxxxxx` (one per probe).
+
+**Read temperature manually**:
+```bash
+cat /sys/bus/w1/devices/28-xxxxxxxxxxxx/w1_slave
+```
+
+### 4. **Configure in RaspberryPints**
+
+1. Go to **Admin → Advanced Hardware → Temperature Probes**
+2. Click **Auto Discover** button
+3. System will detect all connected probes
+4. For each probe:
+   - **Name**: Descriptive name (e.g., "Keg 1", "Fermenter", "Ambient")
+   - **State Pin**: Optional GPIO for status LED
+   - **Adjustment**: Temperature offset for calibration (±degrees)
+5. Configure system settings:
+   - **Check Delay**: Seconds between readings (default: 60)
+   - **Lowest/Highest Temperature**: Bounds for valid readings
+6. Click **Save**
+
+---
+
+## Tips for Temperature Monitoring
+
+**Probe Placement**:
+- **Kegs**: Attach probe to side of keg with thermal paste or tape
+- **Fermenters**: Insert waterproof probe through thermowell
+- **Ambient**: Mount probe away from direct heat/cold sources
+
+**Calibration**:
+- Use ice water (0°C/32°F) as reference
+- Adjust "Adjustment" field to correct offset
+
+**Wire Management**:
+- Label each probe's unique ID for easy identification
+- Use terminal blocks for easy probe swapping
+
+---
+
+## Troubleshooting
+
+**Probes not detected**:
+1. Check 1-wire is enabled: `lsmod | grep w1`
+2. Verify 4.7kΩ resistor is installed
+3. Check wire connections (especially data line)
+4. Try rebooting after enabling 1-wire
+
+**Erratic readings**:
+1. Add or replace 4.7kΩ pull-up resistor
+2. Shorten wire length (max ~10 meters recommended)
+3. Use shielded cable for long runs
+4. Check for loose connections
+
+**Wrong probe ID**:
+- Each DS18B20 has unique 64-bit ID (28-xxxxxxxxxxxx)
+- Note the ID when connecting to identify which physical probe
+
+---
+
+# Connecting PIR Motion Sensors
+
+## Overview
+
+PIR (Passive Infrared) motion sensors detect movement and can wake the display when someone approaches the tap list.
+
+---
+
+## Parts Needed
+
+### 1. **HC-SR501 PIR Motion Sensor**
+- Common and inexpensive PIR module
+- 3-7 meter detection range
+- Adjustable sensitivity and time delay
+
+### 2. **Jumper Wires**
+- Female-to-female for connecting to Pi GPIO
+
+---
+
+## Wiring Diagram
+
+```
+HC-SR501 Module        Raspberry Pi GPIO
+─────────────────────────────────────────────
+VCC          ──────►  5V      (Pin 2 or 4)
+OUT          ──────►  GPIO 17 (Pin 11) - Configurable
+GND          ──────►  GND     (Pin 6, 9, 14, 20, or 25)
+```
+
+### HC-SR501 Module Layout
+
+```
+    ┌───────────────┐
+    │   [Dome Lens] │
+    │               │
+    │  ┌─┐     ┌─┐  │  ← Potentiometers
+    │  │S│     │T│  │     S = Sensitivity
+    │  └─┘     └─┘  │     T = Time Delay
+    │               │
+    │  [ VCC ]      │
+    │  [ OUT ]      │  ← Jumper: H=Repeating, L=Single
+    │  [ GND ]      │
+    └───────────────┘
+```
+
+---
+
+## Step-by-Step Connection Instructions
+
+### 1. **Physical Connection**
+
+1. Connect sensor **VCC** to Pi **Pin 2** (5V)
+2. Connect sensor **GND** to Pi **Pin 6** (GND)
+3. Connect sensor **OUT** to Pi **Pin 11** (GPIO 17) or any available GPIO
+
+### 2. **Configure PIR Sensor Hardware**
+
+**Jumper Setting** (on back of module):
+- Set jumper to **H position** (Repeating Trigger Mode)
+- This allows continuous detection while motion present
+
+**Sensitivity Adjustment** (left potentiometer):
+- Turn clockwise to increase range
+- Start at 50% (middle position)
+- Adjust based on detection distance needed
+
+**Time Delay Adjustment** (right potentiometer):
+- Turn counter-clockwise for minimum delay
+- RaspberryPints handles timing, so use shortest delay
+- Typical: 3-5 seconds minimum
+
+### 3. **Configure in RaspberryPints**
+
+1. Go to **Admin → Advanced Hardware → Motion Detectors**
+2. Click **Add Motion Detector**
+3. Configure:
+   - **Name**: "Front Sensor" (descriptive name)
+   - **Pi Pin**: 17 (or GPIO number you used)
+   - **Priority**: 0 (lower = higher priority for multiple sensors)
+   - **LED Pin**: Optional GPIO for indicator LED
+   - **Sound File**: Optional audio file path for alert sound
+4. For MQTT-enabled remote sensors, configure MQTT fields
+5. Click **Save**
+
+### 4. **Configure Screen Wake Behavior**
+
+Ensure xscreensaver is configured:
+```bash
+# Install if needed
+sudo apt-get install xscreensaver -y
+
+# Configure screensaver timeout
+xscreensaver-demo
+```
+
+Set display power management in autostart:
+```bash
+nano ~/.config/lxsession/LXDE-pi/autostart
+# Add these lines:
+@xset s off
+@xset -dpms
+@xset s noblank
+```
+
+---
+
+## Multiple Motion Sensors
+
+To use multiple sensors:
+1. Each sensor needs unique GPIO pin
+2. Configure different priorities (0 = highest)
+3. Higher priority sensor overrides others
+
+**Example 2-Sensor Setup**:
+- Front sensor: GPIO 17, Priority 0
+- Side sensor: GPIO 27, Priority 1
+
+---
+
+## Troubleshooting
+
+**Sensor always triggered**:
+1. Reduce sensitivity (turn left pot counter-clockwise)
+2. Check sensor isn't facing heat sources (heater, sunlight)
+3. Ensure jumper is in correct position
+
+**Sensor not triggering**:
+1. Increase sensitivity (turn left pot clockwise)
+2. Verify 5V power connection
+3. Check GPIO pin number matches configuration
+4. Test sensor LED (usually lights when motion detected)
+
+**Display not waking**:
+1. Check xscreensaver is installed and running
+2. Verify motion detector is configured in admin
+3. Check RPints logs for motion events
+
+---
+
+# Connecting HX711 Load Cells (Weight Scales)
+
+## Overview
+
+HX711 load cell amplifiers with strain gauge load cells provide accurate weight measurements for kegs and gas tanks. This enables automatic tracking of remaining beer/gas.
+
+---
+
+## Parts Needed
+
+### 1. **HX711 Load Cell Amplifier Module**
+- 24-bit ADC for precise weight measurement
+- Amplifies small signals from load cells
+
+### 2. **Load Cell (Strain Gauge)**
+- Capacity depends on application:
+  - **Kegs**: 50-100 lbs (20-50 kg) load cells
+  - **Gas tanks**: 20-50 lbs (10-20 kg) load cells
+- Common types: Single point, S-type, or platform load cells
+
+### 3. **Platform/Mounting Hardware**
+- For mounting load cells and supporting kegs/tanks
+- Ensure stable, level surface
+
+### 4. **Jumper Wires**
+- For connecting to Raspberry Pi GPIO
+
+---
+
+## Wiring Diagram
+
+### HX711 to Raspberry Pi Connection
+
+```
+HX711 Module          Raspberry Pi GPIO
+─────────────────────────────────────────────
+VCC (or VDD)  ──────►  5V or 3.3V (Pin 2 or 1)
+GND           ──────►  GND     (Pin 6, 9, 14, 20, or 25)
+DT (Data)     ──────►  GPIO 5  (Pin 29) - Configurable
+SCK (Clock)   ──────►  GPIO 6  (Pin 31) - Configurable
+```
+
+### Load Cell to HX711 Connection
+
+```
+Load Cell Wire Colors     HX711 Terminals
+───────────────────────────────────────────
+Red    (Excitation+) ───► E+ or VCC
+Black  (Excitation-) ───► E- or GND
+White  (Signal+)     ───► A+ or S+
+Green  (Signal-)     ───► A- or S-
+```
+
+**Note**: Wire colors may vary by manufacturer. Consult your load cell datasheet.
+
+### Complete System Diagram
+
+```
+    ┌──────────┐
+    │   Keg    │
+    │  or Tank │
+    └────┬─────┘
+         │
+    ┌────▼────────┐
+    │  Platform   │
+    │  (on Load   │
+    │   Cells)    │
+    └─────────────┘
+         │
+    ┌────▼────┐        ┌─────────────┐
+    │  Load   ├───────►│   HX711     ├──► Raspberry Pi
+    │  Cell   │        │  Amplifier  │    (DT → GPIO 5)
+    └─────────┘        └─────────────┘    (SCK → GPIO 6)
+```
+
+---
+
+## Step-by-Step Connection Instructions
+
+### 1. **Connect Load Cell to HX711**
+
+1. Identify load cell wires (use multimeter if needed):
+   - Measure resistance between wires
+   - Excitation wires: ~400-1000Ω
+   - Signal wires: ~350-700Ω
+   
+2. Connect to HX711:
+   - **Red** → E+
+   - **Black** → E-
+   - **White** → A+
+   - **Green** → A-
+
+### 2. **Connect HX711 to Raspberry Pi**
+
+1. **Power**:
+   - HX711 **VCC** → Pi **Pin 2** (5V) or **Pin 1** (3.3V)
+   - HX711 **GND** → Pi **Pin 6** (GND)
+
+2. **Data Lines** (example for first load cell):
+   - HX711 **DT** → Pi **GPIO 5** (Pin 29) - Response Pin
+   - HX711 **SCK** → Pi **GPIO 6** (Pin 31) - Command Pin
+
+### 3. **Physical Installation**
+
+**For Kegs**:
+1. Place 3 or 4 load cells under platform corners
+2. Ensure platform is level
+3. Load cells should be the only support (no floor contact)
+4. Place keg centered on platform
+
+**For Gas Tanks**:
+1. Mount load cell between tank support and floor
+2. Ensure tank hangs from load cell (not resting on floor)
+3. Secure to prevent swinging
+
+### 4. **Configure in RaspberryPints**
+
+1. Go to **Admin → Advanced Hardware → Load Cells**
+2. Add load cell configuration:
+
+**Per Load Cell Configuration**:
+- **Tap/Gas Tank**: Select which tap/tank this measures
+- **Command Pin**: GPIO for SCK (e.g., 6)
+- **Response Pin**: GPIO for DT (e.g., 5)
+- **Scale Ratio**: Calibration factor (see calibration below)
+- **Offset**: Tare value (automatically set)
+- **Update Variance**: Noise filter (grams, e.g., 50)
+- **Unit**: Weight unit (lbs, kg, g, oz)
+- **Tare Date**: Last calibration timestamp
+- **Current Weight**: Real-time reading (read-only)
+
+### 5. **Calibration Process**
+
+**Step 1: Calculate Scale Ratio**
+
+1. **Get Raw Reading with No Weight**:
+   ```bash
+   # In RPints debug mode, note the raw value with platform empty
+   ```
+
+2. **Place Known Weight** (e.g., 10 lbs or 5 kg):
+   ```bash
+   # Note the new raw value
+   ```
+
+3. **Calculate Ratio**:
+   ```
+   Scale Ratio = (Raw_WithWeight - Raw_Empty) / Known_Weight
+   
+   Example:
+   Raw_Empty = 50000
+   Raw_WithWeight = 150000  
+   Known_Weight = 10 lbs
+   Scale Ratio = (150000 - 50000) / 10 = 10000
+   ```
+
+4. Enter Scale Ratio in Load Cell configuration
+
+**Step 2: Tare (Zero) the Scale**
+
+1. Place empty keg (or tank) on platform
+2. Click **Tare** button in Load Cells page
+3. System records offset for this weight as "zero"
+
+**Step 3: Set Update Variance**
+
+- Filters out noise/vibrations
+- Typical: 50-100 grams (prevents constant tiny updates)
+- Adjust based on environment
+
+**Step 4: Verify**
+
+1. Place keg with known amount of beer
+2. Check **Current Weight** matches expected
+3. Adjust Scale Ratio if needed
+
+---
+
+## Multiple Load Cells
+
+**For Multiple Taps**:
+- Each tap/tank needs unique Command Pin and Response Pin pair
+- Example:
+  - Tap 1: Command=GPIO6, Response=GPIO5
+  - Tap 2: Command=GPIO13, Response=GPIO19
+  - Tap 3: Command=GPIO26, Response=GPIO21
+
+**Sharing GPIO** (NOT recommended):
+- Different Command pins can share Response pins
+- Better to use unique pin pairs for each load cell
+
+---
+
+## Tips for Accurate Measurements
+
+**Physical Setup**:
+- Ensure platform doesn't touch walls/floor
+- Level the platform (use bubble level)
+- Isolate from vibrations
+- Protect from temperature extremes
+
+**Calibration**:
+- Calibrate with weight similar to full keg (40-50 lbs)
+- Re-tare after moving keg/platform
+- Recalibrate if measurements drift over time
+
+**Environmental**:
+- Temperature affects accuracy
+- Keep load cells dry
+- Avoid mechanical stress on wires
+
+---
+
+## Troubleshooting
+
+**No readings or zero values**:
+1. Check power to HX711 (3.3V or 5V)
+2. Verify DT and SCK connections
+3. Check load cell wiring (E+, E-, A+, A-)
+4. Test with multimeter: measure resistance across load cell wires
+
+**Erratic/jumping readings**:
+1. Increase Update Variance to filter noise
+2. Check for loose connections
+3. Ensure platform doesn't touch floor/walls
+4. Shield data wires if near electrical noise sources
+
+**Readings drift over time**:
+1. Re-tare the scale
+2. Check for temperature changes
+3. Verify load cell is not mechanically stressed
+4. Recalibrate Scale Ratio
+
+**Wrong weight values**:
+1. Recalculate and update Scale Ratio
+2. Check Unit setting matches your expectations
+3. Verify known calibration weight is accurate
+4. Re-tare after adjusting
+
+---
+
+**Resources**:
+- [HX711 Datasheet](https://cdn.sparkfun.com/datasheets/Sensors/ForceFlex/hx711_english.pdf)
+- [Load Cell Basics](https://learn.sparkfun.com/tutorials/load-cell-amplifier-hx711-breakout-hookup-guide)
+
+---
+
+# Connecting 12V Solenoid Tap Valves
+
+## Overview
+
+Solenoid valves allow automated control of beer taps through RaspberryPints. Since tap valves operate at 12VDC and the Raspberry Pi/Arduino operate at 3.3V/5V, relay modules are required as an interface to safely switch the higher voltage.
+
+**⚠️ CRITICAL SAFETY WARNING**: NEVER connect 12V directly to Raspberry Pi or Arduino GPIO pins! This will permanently damage your device. Always use relay modules to isolate the high voltage circuit.
+
+---
+
+## Parts Needed
+
+### 1. **12VDC Solenoid Valves**
+- Standard keg tap solenoid valves
+- Operating voltage: 12VDC
+- Current draw: typically 0.5-1.0A per valve
+- Connection: 1/4" or 3/8" barb fittings
+
+### 2. **Relay Module**
+- Single channel relay per valve
+- Or multi-channel relay board (2, 4, 8, or 16 channels)
+- Specifications:
+  - Control voltage: 5VDC (trigger from Pi/Arduino)
+  - Switching capacity: 10A @ 12VDC (minimum)
+  - Type: Active LOW or Active HIGH (note which type)
+- Common modules: SainSmart, Elegoo, or similar relay boards
+
+### 3. **12VDC Power Supply**
+- Capacity: Calculate total valve current + 20% margin
+  - Example: 4 valves × 1A = 4A → use 5A supply
+- Regulated 12V DC adapter
+- Barrel jack or screw terminals
+
+### 4. **Wiring Components**
+- 18-22 AWG wire for 12V circuit (power to valves)
+- 22-24 AWG wire for 5V control signals (Pi to relay)
+- Wire connectors or terminal blocks
+- Heat shrink tubing (recommended)
+
+### 5. **Optional: Flyback Diodes**
+- 1N4007 diodes (one per valve)
+- Protects relays from voltage spikes when valve deactivates
+- Often built into relay modules
+
+---
+
+## Understanding the Circuit
+
+### Two Separate Circuits
+
+**Low Voltage Control Circuit (5V)**:
+- Pi/Arduino GPIO → Relay IN pin (control signal)
+- Pi/Arduino 5V → Relay VCC (powers relay coil)
+- Pi/Arduino GND → Relay GND (common ground)
+
+**High Voltage Switching Circuit (12V)**:
+- 12V Power Supply + → Relay COM (Common)
+- Relay NO (Normally Open) → Valve positive terminal
+- Valve negative terminal → 12V Power Supply - (ground)
+
+### How It Works
+
+1. GPIO pin sends 5V signal to relay IN pin
+2. Relay coil energizes, closing the switch
+3. COM connects to NO, completing 12V circuit
+4. 12V flows through valve, opening it
+5. GPIO goes LOW, relay opens, valve closes
+
+---
+
+## Wiring Diagram
+
+### Single Valve Setup
+
+```
+12V Power Supply                Relay Module              Solenoid Valve
+─────────────────              ───────────────            ──────────────
+                               
+    (+) ────────────────────► COM                         
+                                │                         
+                               NO ──────────────────────► (+) Terminal
+                                                           │
+    (-) ────────────────────────────────────────────────► (-) Terminal
+                               
+                               
+Raspberry Pi / Arduino         Relay Control Side
+──────────────────            ───────────────────
+                               
+GPIO (e.g., 23) ──────────────► IN (Control Pin)
+
+5V ────────────────────────────► VCC (Relay Power)
+
+GND ───────────────────────────► GND (Common Ground)
+```
+
+### Complete System Diagram with 2 Valves
+
+```
+                    ┌─────────────────┐
+                    │  12V DC Power   │
+                    │     Supply      │
+                    └────┬───────┬────┘
+                         │       │
+                        (+)     (-)
+                         │       │
+        ┌────────────────┴───┐   │
+        │                    │   │
+        │  ┌──────────────┐  │   │
+        │  │  Relay 1     │  │   │
+        └─►│  COM    NO   ├──┼───┼──► Valve 1 (+)
+           │              │  │   │         │
+           │  IN  VCC GND │  │   │         │
+           └──┬───┬───┬───┘  │   │    Valve 1 (-)
+              │   │   │      │   │         │
+              │   │   │      │   └─────────┴──────┐
+        ┌─────┴───┘   │      │                    │
+        │             │      │                    │
+        │  ┌──────────────┐  │                    │
+        │  │  Relay 2     │  │                    │
+        └─►│  COM    NO   ├──┼────────────────────┤
+           │              │  │         Valve 2 (+)│
+           │  IN  VCC GND │  │                    │
+           └──┬───┬───┬───┘  │         Valve 2 (-)│
+              │   │   │      └────────────────────┘
+              │   │   │
+    ┌─────────┴───┴───┴──────────┐
+    │   Raspberry Pi / Arduino   │
+    │                            │
+    │  GPIO 23 ──► Relay 1 IN    │
+    │  GPIO 24 ──► Relay 2 IN    │
+    │  5V      ──► Relay VCC     │
+    │  GND     ──► Relay GND     │
+    └────────────────────────────┘
+```
+
+---
+
+## Step-by-Step Connection Instructions
+
+### 1. **Prepare the Relay Module**
+
+1. Identify relay module pins:
+   - **VCC**: Power input (5V from Pi/Arduino)
+   - **GND**: Ground (common with Pi/Arduino)
+   - **IN**: Control signal input (from GPIO)
+   - **COM**: Common terminal (12V input)
+   - **NO**: Normally Open terminal (to valve)
+   - **NC**: Normally Closed terminal (not used)
+
+2. Check if relay is Active HIGH or Active LOW:
+   - **Active LOW**: Relay activates when GPIO is LOW (0V) - most common
+   - **Active HIGH**: Relay activates when GPIO is HIGH (5V)
+   - RaspberryPints typically uses Active LOW relays
+
+### 2. **Connect Low Voltage Control Circuit**
+
+1. **From Raspberry Pi/Arduino to Relay**:
+   - Pi/Arduino **5V** → Relay module **VCC**
+   - Pi/Arduino **GND** → Relay module **GND**
+   - Pi/Arduino **GPIO 23** → Relay 1 **IN** (for first valve)
+   - Pi/Arduino **GPIO 24** → Relay 2 **IN** (for second valve)
+   - Continue for additional valves...
+
+**Example GPIO Pin Assignments**:
+- Tap 1 Valve: GPIO 23 (Pi Pin 16)
+- Tap 2 Valve: GPIO 24 (Pi Pin 18)
+- Tap 3 Valve: GPIO 25 (Pi Pin 22)
+- Tap 4 Valve: GPIO 8 (Pi Pin 24)
+
+### 3. **Connect High Voltage Switching Circuit**
+
+1. **12V Power Supply to Relay COM terminals**:
+   - Connect 12V supply **positive (+)** to all relay **COM** terminals
+   - Can use bus bar or daisy chain across relay COM pins
+
+2. **Relay NO to Valve Positive**:
+   - Connect relay **NO** terminal to valve **positive terminal**
+   - Each relay NO goes to its respective valve
+
+3. **Valve Negative to 12V Ground**:
+   - Connect all valve **negative terminals** together
+   - Connect to 12V power supply **negative (-)**
+
+**⚠️ IMPORTANT**: 
+- The 12V circuit is completely isolated from the Pi/Arduino
+- Only the relay coil (VCC/GND/IN) connects to Pi
+- Common ground ensures proper switching
+
+### 4. **Add Flyback Diodes (Recommended)**
+
+If relay module doesn't have built-in protection:
+
+1. For each valve, add a 1N4007 diode across valve terminals
+2. Diode **cathode** (stripe) → valve **positive**
+3. Diode **anode** → valve **negative**
+4. This protects against voltage spikes when valve closes
+
+### 5. **Secure Connections**
+
+1. Use terminal blocks for easy maintenance
+2. Label all wires (valve number, positive/negative)
+3. Use heat shrink tubing on exposed connections
+4. Zip-tie wire bundles for organization
+5. Keep 12V wiring away from signal wires
+
+---
+
+## Configuration in RaspberryPints
+
+### 1. **Enable Tap Valves**
+
+1. Go to **Admin → Tap List**
+2. Click **Settings** button
+3. Configure:
+   - **Use Tap Valves**: Check to enable
+   - **Use 3-Wire Valves**: Uncheck (for standard 2-wire valves)
+   - **Valves Power Pin**: Leave blank (external 12V supply)
+   - **Valves On Time**: Duration in milliseconds (e.g., 500ms)
+
+### 2. **Configure Individual Tap Valves**
+
+In **Tap List** page, for each tap:
+- **Valve Pin**: Enter GPIO number (e.g., 23, 24, 25)
+- **Valve PI Pin**: Check box if pin is on Raspberry Pi (vs. Arduino)
+
+### 3. **Test Valves**
+
+1. In Tap List, locate valve control buttons
+2. Click **"Let it flow"** to open valve
+3. Verify:
+   - Relay clicks (audible)
+   - Valve opens (beer flows)
+   - LED on relay board lights up
+4. Click **"Stop flow"** to close valve
+
+---
+
+## Multiple Valve Configurations
+
+### Option 1: Pi GPIO Control (Recommended for 1-8 Valves)
+
+- Each valve controlled by dedicated Pi GPIO
+- Direct control from RaspberryPints
+- Simpler wiring, no Arduino needed
+- Limited by available GPIO pins
+
+**GPIO Pin Recommendations**:
+- Use GPIO 23, 24, 25, 8, 7, 12, 16, 20, 21
+- Avoid GPIO 2, 3 (I2C), GPIO 14, 15 (Serial)
+- Document which GPIO controls which tap
+
+### Option 2: Arduino Control (For 8+ Valves)
+
+- Arduino controls relays via serial commands from Pi
+- Requires Arduino/Alamode setup
+- Configure valve pins in Arduino firmware
+- More complex but supports many valves
+
+### Option 3: Shift Registers (Advanced)
+
+- Use 74HC595 shift registers to expand GPIO
+- Control 8+ valves with 3 GPIO pins
+- Requires custom coding
+- Best for large tap systems (16+ taps)
+
+---
+
+## Troubleshooting
+
+### Valve Doesn't Open
+
+1. **Check GPIO signal**:
+   ```bash
+   # Test GPIO manually (GPIO 23 example)
+   gpio -g mode 23 out
+   gpio -g write 23 0  # For Active LOW relay
+   # Should hear relay click
+   ```
+
+2. **Verify relay module**:
+   - Check VCC has 5V power
+   - Check GND is connected
+   - LED on relay should light when activated
+
+3. **Check 12V circuit**:
+   - Measure voltage at relay COM (should be 12V)
+   - Check valve connections (tight, no corrosion)
+   - Test valve directly with 12V (bypass relay)
+
+### Relay Clicks But Valve Doesn't Open
+
+1. Check 12V power supply capacity (sufficient amps)
+2. Measure voltage at valve terminals while activated (should be 12V)
+3. Test valve with multimeter (resistance: 10-50Ω typical)
+4. Check wire gauge adequate (18-22 AWG for 12V circuit)
+
+### Valve Stays Open/Won't Close
+
+1. Relay may be stuck (mechanical failure)
+2. GPIO may be stuck HIGH/LOW (check configuration)
+3. Valve may be mechanically stuck (debris, scale)
+4. Check for short circuit in wiring
+
+### Multiple Valves Not Working
+
+1. Check 12V power supply capacity
+   - Each valve draws ~0.5-1A
+   - Use adequate power supply (2A per valve recommended)
+2. Check common ground connections
+3. Verify each relay module powered correctly
+
+### Intermittent Operation
+
+1. Loose wire connections (check all terminals)
+2. Inadequate power supply (voltage drop under load)
+3. EMI interference (separate signal and power wiring)
+4. Relay contacts wearing out (replace relay)
+
+---
+
+## Safety Considerations
+
+**Electrical Safety**:
+- Always disconnect 12V power before working on wiring
+- Use appropriate wire gauge for current
+- Fuse the 12V circuit (5A fuse recommended)
+- Weatherproof connections if in humid environment
+
+**Beer Line Safety**:
+- Valves must be food-grade stainless steel
+- Regular cleaning and sanitization
+- Check for leaks regularly
+- Ensure proper pressure (10-12 PSI typical)
+
+**Mechanical**:
+- Secure valve bodies (vibration-resistant mounting)
+- Use proper beer line fittings
+- Don't over-tighten connections (can crack plastic)
+
+---
+
+## Advanced Configurations
+
+### 3-Wire Valve Support
+
+Some valves have 3 wires for position feedback:
+1. Wire 1: 12V+ (COM → NO)
+2. Wire 2: Ground (to 12V-)
+3. Wire 3: Position signal (separate GPIO input)
+
+In RaspberryPints:
+- Enable **Use 3-Wire Valves**
+- Configure both control pin and feedback pin
+
+### Valve Control via MQTT
+
+For wireless valve control:
+1. Configure ESP32/ESP8266 with relay shield
+2. Subscribe to RaspberryPints MQTT topic
+3. Control valves remotely
+4. Useful for distributed tap systems
+
+### Timed Pour Feature
+
+1. Enable **Pour Shut-Off Count** in Tap List Settings
+2. System automatically closes valve after preset amount
+3. Prevents overflow/waste
+4. Useful for events or self-serve setups
+
+---
+
+## Wiring Best Practices
+
+**Organization**:
+- Use different wire colors:
+  - Red: 12V positive
+  - Black: 12V/common ground
+  - Yellow/Green/Blue: GPIO signals (numbered)
+- Label everything with wire markers
+- Use terminal blocks for easy troubleshooting
+
+**Routing**:
+- Keep 12V power wires separated from signal wires
+- Use shielded cable for long GPIO runs (>3 feet)
+- Mount relay boards near valves to minimize 12V wiring
+- Use cable management (zip ties, wire looms)
+
+**Future-Proofing**:
+- Install extra relay channels for expansion
+- Run extra wires to tap locations
+- Document GPIO assignments in admin notes
+- Take photos of wiring for future reference
+
+---
+
+## Parts Shopping List (4-Tap Example)
+
+| Item | Quantity | Example Part |
+|------|----------|--------------|
+| 12V Solenoid Valves | 4 | Standard keg valve, 1/4" barb |
+| 4-Channel Relay Module | 1 | SainSmart 4-channel 5V relay |
+| 12V Power Supply | 1 | 5A (60W) 12VDC adapter |
+| 1N4007 Diodes | 4 | Flyback protection (if needed) |
+| 18 AWG Wire | 20 ft | For 12V circuit |
+| 22 AWG Wire | 20 ft | For GPIO signals |
+| Terminal Blocks | 2 | 12-position screw terminals |
+| Heat Shrink Tubing | 1 pack | Various sizes |
+| Wire Labels | 1 pack | For marking connections |
+
+**Estimated Cost**: $60-100 for 4-tap system
+
+---
+
+**Resources**:
+- [Relay Module Tutorial](https://www.electronicshub.org/control-a-relay-using-raspberry-pi/)
+- [Solenoid Valve Basics](https://www.fluidpowerworld.com/understanding-solenoid-valves/)
+- [GPIO Pinout Reference](https://pinout.xyz/)
+
+---
+
+# MQTT Integration with RaspberryPints
+
+## Overview
+
+MQTT (Message Queuing Telemetry Transport) is a lightweight publish/subscribe messaging protocol perfect for IoT devices. RaspberryPints can use MQTT to communicate with wireless flow meters, sensors, and other hardware without direct wiring to the Raspberry Pi.
+
+**Use Cases**:
+- Wireless flow meters (Photon, ESP8266, ESP32)
+- Remote motion sensors
+- Distributed temperature probes
+- Cloud-connected devices
+- Multi-Pi installations sharing data
+
+---
+
+## MQTT Architecture in RaspberryPints
+
+```
+┌─────────────────────┐
+│  Raspberry Pi       │
+│  ┌───────────────┐  │
+│  │ Mosquitto     │  │◄──── MQTT Broker (Server)
+│  │ MQTT Broker   │  │
+│  └───────┬───────┘  │
+│          │          │
+│  ┌───────▼───────┐  │
+│  │ RaspberryPints│  │◄──── Subscribes to topics
+│  │ Python/PHP    │  │      Publishes commands
+│  └───────────────┘  │
+└─────────────────────┘
+          ▲
+          │ MQTT Messages
+          │ (WiFi/Network)
+          │
+    ┌─────┴─────┬─────────┬─────────┐
+    │           │         │         │
+┌───▼────┐  ┌──▼───┐  ┌──▼───┐  ┌──▼───┐
+│Photon  │  │ESP32 │  │ESP8266│ │Other │
+│Flow    │  │Temp  │  │Motion│  │MQTT  │
+│Meter   │  │Sensor│  │Sensor│  │Device│
+└────────┘  └──────┘  └──────┘  └──────┘
+```
+
+---
+
+## Part 1: Setting Up MQTT Broker on Raspberry Pi
+
+### Installing Mosquitto MQTT Broker
+
+The installer can set this up automatically, or you can install manually:
+
+**Automatic Installation** (During RPints Setup):
+1. When asked "Do you want to use MQTT?" → Select **Yes**
+2. When asked "Will this pi host the MQTT Server?" → Select **Yes**
+3. Enter MQTT Port (default: **1883**)
+4. Enter MQTT Username (default: **RaspberryPints**)
+5. Enter MQTT Password (create a secure password)
+6. Installer configures Mosquitto automatically
+
+**Manual Installation**:
+```bash
+# Install Mosquitto broker and clients
+sudo apt-get update
+sudo apt-get install mosquitto mosquitto-clients -y
+
+# Install Python MQTT library
+pip install paho-mqtt
+# For Bookworm/Python3:
+sudo apt-get install python3-paho-mqtt -y
+```
+
+### Configuring Mosquitto
+
+The configuration file is located at: `/etc/mosquitto/conf.d/rpints.conf`
+
+**View Current Configuration**:
+```bash
+cat /etc/mosquitto/conf.d/rpints.conf
+```
+
+**Example Configuration**:
+```
+allow_anonymous false
+password_file /etc/mosquitto/pwfile
+listener 1883
+```
+
+**Managing Users and Passwords**:
+```bash
+# Add a new user
+sudo mosquitto_passwd -b /etc/mosquitto/pwfile username password
+
+# Add first user (creates file)
+sudo mosquitto_passwd -c /etc/mosquitto/pwfile RaspberryPints YourPassword
+
+# Change password
+sudo mosquitto_passwd -b /etc/mosquitto/pwfile RaspberryPints NewPassword
+
+# Restart Mosquitto after changes
+sudo systemctl restart mosquitto
+```
+
+**Checking Broker Status**:
+```bash
+# Check if Mosquitto is running
+sudo systemctl status mosquitto
+
+# View Mosquitto logs
+sudo tail -f /var/log/mosquitto/mosquitto.log
+
+# Test broker locally
+mosquitto_sub -h localhost -p 1883 -u RaspberryPints -P YourPassword -t '#' -v
+```
+
+---
+
+## Part 2: Configuring RaspberryPints for MQTT
+
+### Python Configuration
+
+Edit `/var/www/html/python/Config.py`:
+
+```python
+# MQTT Connection Settings
+config['flowmon.port'] = 'MQTT'  # Tell flowmon to use MQTT instead of serial
+config['mqtt.host'] = 'localhost'  # MQTT broker address
+config['mqtt.port'] = '1883'       # MQTT broker port
+config['mqtt.user'] = 'RaspberryPints'  # MQTT username
+config['mqtt.password'] = 'YourPassword'  # MQTT password
+```
+
+**After editing**, restart the flowmon service:
+```bash
+sudo /etc/init.d/flowmon restart
+```
+
+### Database Configuration
+
+Flow meter pins are configured in the database through **Admin → Tap List → Settings**.
+
+For MQTT-based flow meters, the "Flow Pin" becomes the **MQTT Topic** identifier:
+- Instead of GPIO pin number (e.g., 2, 3, 4)
+- Use MQTT topic identifiers (e.g., "tap1", "tap2", "tap3")
+
+---
+
+## Part 3: MQTT Topics Used by RaspberryPints
+
+### Current Topic Structure
+
+**RaspberryPints currently uses a simple topic structure:**
+
+**Subscribe Topic** (RPints listens for messages):
+```
+rpints/pours
+```
+- All flow meter devices publish their pour/pulse data to this single topic
+- RaspberryPints FlowMonitor subscribes to this topic
+
+**Publish Topic** (RPints sends messages):
+```
+rpints
+```
+- RaspberryPints publishes commands and status to this topic
+- Flow meters and other devices can subscribe to receive commands
+
+**Implementation Details** (`python/FlowMonitor.py`):
+- Line 922: Default subscription topic is `"rpints/pours"`
+- Line 990: Publishing uses topic `"rpints"`
+- Line 985-987: Messages are processed by `flowMonitor.processMsg()`
+
+### Message Format
+
+Messages should be in the format that the Arduino/Photon firmware sends:
+
+**Pour/Pulse Message** (Device → RPints):
+```
+Format: Standard Arduino serial protocol message
+The message format should match what the Arduino code sends via serial
+```
+
+**Example Message Processing**:
+The `processMsg()` function in FlowMonitor.py parses incoming messages to extract:
+- Tap/pin identification
+- Pulse counts
+- Flow meter readings
+- Status updates
+
+**Note**: The actual message parsing depends on the Arduino firmware format being used. Common formats include:
+- Simple pulse counts: `"tap1:450"`
+- JSON format: `{"tap":"tap1","pulses":450}`
+- Arduino protocol format (varies by firmware version)
+
+### Customizing Topics
+
+If you need different topics for your setup, you can modify:
+
+**In `python/FlowMonitor.py` line 922**:
+```python
+class MQTTListenerThread (threading.Thread):
+    def __init__(self, threadID, flowMonitor, host, port, user, password, 
+                 live_interval=45, topics="rpints/pours"):  # Change this
+```
+
+**Example Custom Topics**:
+```python
+topics="mybrewery/flow/#"  # Subscribe to all flow topics
+topics="rpints/tap/+"      # Subscribe to rpints/tap/1, rpints/tap/2, etc.
+```
+
+MQTT wildcards:
+- `+` = single level wildcard (e.g., `rpints/+/status`)
+- `#` = multi-level wildcard (e.g., `rpints/#` for all rpints topics)
+
+---
+
+## Part 4: Building MQTT-Based Flow Meters
+
+### Example: Photon-Based Flow Meter
+
+**Hardware Needed**:
+- Particle Photon (WiFi-enabled microcontroller)
+- YF-S201 Flow Sensor
+- 10K Ω resistor
+- Power supply (5V)
+
+**Photon Code Example**:
+```cpp
+#include <MQTT.h>
+
+// MQTT Settings
+MQTT client("raspberrypi.local", 1883, callback);
+const char* mqtt_user = "RaspberryPints";
+const char* mqtt_pass = "YourPassword";
+
+// Flow Sensor Settings
+const int flowPin = D2;
+volatile int pulseCount = 0;
+String tapID = "tap1";
+
+void setup() {
+    pinMode(flowPin, INPUT_PULLUP);
+    attachInterrupt(flowPin, pulseCounter, FALLING);
+    
+    // Connect to MQTT
+    client.connect("photon-tap1", mqtt_user, mqtt_pass);
+    
+    // Subscribe to commands from RPints
+    client.subscribe("rpints");
+}
+
+void loop() {
+    if (client.isConnected()) {
+        client.loop();
+        
+        // Send pulse count every second to rpints/pours topic
+        static unsigned long lastTime = 0;
+        if (millis() - lastTime > 1000) {
+            // Format message to match Arduino serial protocol
+            // Adjust format based on your Arduino firmware
+            String payload = String::format("tap%d:%d", 1, pulseCount);
+            // Or use JSON if your setup expects it:
+            // String payload = String::format("{\"tap\":\"%s\",\"pulses\":%d}", 
+            //                                tapID.c_str(), pulseCount);
+            client.publish("rpints/pours", payload);
+            pulseCount = 0;
+            lastTime = millis();
+        }
+    } else {
+        client.connect("photon-tap1", mqtt_user, mqtt_pass);
+        delay(5000);
+    }
+}
+
+void pulseCounter() {
+    pulseCount++;
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+    // Handle commands from RPints
+    // Commands arrive on "rpints" topic
+    String message;
+    for (int i = 0; i < length; i++) {
+        message += (char)payload[i];
+    }
+    Serial.println("Received: " + message);
+}
+```
+
+### Example: ESP8266-Based Flow Meter
+
+**Hardware Needed**:
+- ESP8266 (NodeMCU or Wemos D1 Mini)
+- YF-S201 Flow Sensor
+- 10K Ω resistor
+
+**ESP8266 Arduino Code**:
+```cpp
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+
+// WiFi Settings
+const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";
+
+// MQTT Settings
+const char* mqtt_server = "raspberrypi.local";
+const int mqtt_port = 1883;
+const char* mqtt_user = "RaspberryPints";
+const char* mqtt_pass = "YourPassword";
+
+// Flow Sensor
+const int flowPin = D2;
+const int tapNumber = 1;  // Change for each tap
+volatile int pulseCount = 0;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(flowPin, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(flowPin), pulseCounter, FALLING);
+    
+    setup_wifi();
+    client.setServer(mqtt_server, mqtt_port);
+    client.setCallback(callback);
+}
+
+void loop() {
+    if (!client.connected()) {
+        reconnect();
+    }
+    client.loop();
+    
+    // Send pulse data every second to rpints/pours topic
+    static unsigned long lastTime = 0;
+    if (millis() - lastTime > 1000) {
+        char payload[100];
+        // Format to match Arduino serial protocol
+        // Adjust format based on your Arduino firmware version
+        snprintf(payload, sizeof(payload), "tap%d:%d", tapNumber, pulseCount);
+        
+        // Alternative JSON format (if your setup uses JSON):
+        // snprintf(payload, sizeof(payload), 
+        //          "{\"tap\":\"tap%d\",\"pulses\":%d}", 
+        //          tapNumber, pulseCount);
+        
+        client.publish("rpints/pours", payload);
+        Serial.print("Sent: ");
+        Serial.println(payload);
+        pulseCount = 0;
+        lastTime = millis();
+    }
+}
+
+void setup_wifi() {
+    Serial.print("Connecting to WiFi");
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("\nWiFi connected");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+}
+
+void reconnect() {
+    while (!client.connected()) {
+        Serial.print("Connecting to MQTT...");
+        String clientId = "ESP8266-tap" + String(tapNumber);
+        if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+            Serial.println("Connected!");
+            // Subscribe to commands from RPints
+            client.subscribe("rpints");
+            Serial.println("Subscribed to rpints topic");
+        } else {
+            Serial.print("Failed, rc=");
+            Serial.print(client.state());
+            Serial.println(" Retrying in 5 seconds...");
+            delay(5000);
+        }
+    }
+}
+
+void ICACHE_RAM_ATTR pulseCounter() {
+    pulseCount++;
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+    // Handle commands from RaspberryPints
+    Serial.print("Message received on ");
+    Serial.print(topic);
+    Serial.print(": ");
+    
+    String message = "";
+    for (int i = 0; i < length; i++) {
+        message += (char)payload[i];
+    }
+    Serial.println(message);
+    
+    // Parse and handle commands here
+    // Example: valve control, configuration updates, etc.
+}
+```
+
+---
+
+## Part 5: Testing and Debugging MQTT
+
+### Testing with Command Line Tools
+
+**Subscribe to all topics** (monitor all MQTT traffic):
+```bash
+mosquitto_sub -h localhost -p 1883 -u RaspberryPints -P YourPassword -t '#' -v
+```
+
+**Subscribe to flow/pour data**:
+```bash
+mosquitto_sub -h localhost -p 1883 -u RaspberryPints -P YourPassword -t 'rpints/pours' -v
+```
+
+**Manually publish test pulse data** (format matches Arduino protocol):
+```bash
+# Simple format
+mosquitto_pub -h localhost -p 1883 -u RaspberryPints -P YourPassword \
+  -t 'rpints/pours' \
+  -m 'tap1:100'
+
+# Or JSON format (if your setup uses JSON)
+mosquitto_pub -h localhost -p 1883 -u RaspberryPints -P YourPassword \
+  -t 'rpints/pours' \
+  -m '{"tap":"tap1","pulses":100}'
+```
+
+**Test sending commands to devices**:
+```bash
+mosquitto_pub -h localhost -p 1883 -u RaspberryPints -P YourPassword \
+  -t 'rpints' \
+  -m 'valve1:open'
+```
+
+**Monitor what RPints is publishing**:
+```bash
+mosquitto_sub -h localhost -p 1883 -u RaspberryPints -P YourPassword -t 'rpints' -v
+```
+
+### Debugging Checklist
+
+1. **Check Mosquitto is running**:
+   ```bash
+   sudo systemctl status mosquitto
+   ```
+
+2. **Verify RaspberryPints MQTT config** (`/var/www/html/python/Config.py`):
+   - Correct host, port, username, password
+   - `flowmon.port` set to `'MQTT'`
+
+3. **Check flowmon is running**:
+   ```bash
+   sudo /etc/init.d/flowmon status
+   ```
+
+4. **Enable MQTT debugging** in Config.py:
+   ```python
+   config['flowmon.debug'] = True
+   ```
+   Then restart flowmon and check logs.
+
+5. **Monitor MQTT traffic**:
+   ```bash
+   mosquitto_sub -h localhost -p 1883 -u RaspberryPints -P YourPassword -t '#' -v
+   ```
+
+6. **Check firewall** (if using remote broker):
+   ```bash
+   sudo ufw allow 1883/tcp
+   ```
+
+---
+
+## Part 6: Advanced MQTT Configurations
+
+### Using External MQTT Broker
+
+If you want to use a cloud MQTT broker or separate server:
+
+**In RaspberryPints Config.py**:
+```python
+config['mqtt.host'] = 'broker.hivemq.com'  # External broker
+config['mqtt.port'] = '1883'
+config['mqtt.user'] = 'your_username'
+config['mqtt.password'] = 'your_password'
+```
+
+**Popular Public MQTT Brokers**:
+- `broker.hivemq.com` (port 1883) - Free public broker
+- `test.mosquitto.org` (port 1883) - Mosquitto test broker
+- `mqtt.eclipseprojects.io` (port 1883) - Eclipse public broker
+
+⚠️ **Security Warning**: Public brokers are not secure. Use for testing only!
+
+### Secure MQTT with TLS/SSL
+
+For production deployments, use encrypted MQTT:
+
+**Generate Certificates**:
+```bash
+# Install certbot
+sudo apt-get install certbot -y
+
+# Generate certificates
+sudo certbot certonly --standalone -d yourdomain.com
+
+# Configure Mosquitto for TLS
+sudo nano /etc/mosquitto/conf.d/rpints.conf
+```
+
+**TLS Configuration**:
+```
+listener 8883
+cafile /etc/letsencrypt/live/yourdomain.com/chain.pem
+certfile /etc/letsencrypt/live/yourdomain.com/cert.pem
+keyfile /etc/letsencrypt/live/yourdomain.com/privkey.pem
+```
+
+### MQTT Quality of Service (QoS)
+
+MQTT supports three QoS levels:
+- **QoS 0**: At most once (fire and forget)
+- **QoS 1**: At least once (acknowledged delivery)
+- **QoS 2**: Exactly once (guaranteed delivery)
+
+For flow meters, **QoS 1** is recommended to ensure pulse counts aren't lost.
+
+### Retained Messages
+
+Enable retained messages for device status:
+```cpp
+client.publish("rpints/flow/tap1/status", "online", true); // true = retained
+```
+
+This ensures new subscribers immediately see the last published status.
+
+---
+
+## Part 7: Troubleshooting Common Issues
+
+### Issue: Device Can't Connect to Broker
+
+**Solutions**:
+1. Check broker is running: `sudo systemctl status mosquitto`
+2. Verify network connectivity: `ping raspberrypi.local`
+3. Check firewall: `sudo ufw status`
+4. Test with mosquitto_sub: `mosquitto_sub -h localhost -p 1883 -t '#'`
+5. Check credentials are correct
+6. Look at Mosquitto logs: `sudo tail -f /var/log/mosquitto/mosquitto.log`
+
+### Issue: Messages Not Reaching RaspberryPints
+
+**Solutions**:
+1. Check flowmon is running: `sudo /etc/init.d/flowmon status`
+2. Verify Config.py has correct MQTT settings
+3. Enable debug logging: `config['flowmon.debug'] = True`
+4. Check RPints logs: Admin → RPints Log
+5. Monitor MQTT traffic to confirm messages are being sent
+
+### Issue: High Latency or Dropped Messages
+
+**Solutions**:
+1. Check WiFi signal strength on devices
+2. Reduce QoS if latency is critical
+3. Optimize message frequency (don't publish more than necessary)
+4. Check for network congestion
+5. Consider local broker instead of cloud broker
+
+---
+
+## Resources
+
+- **Mosquitto Documentation**: [mosquitto.org](https://mosquitto.org/)
+- **MQTT Protocol Specification**: [mqtt.org](https://mqtt.org/)
+- **Paho MQTT Python**: [eclipse.org/paho/clients/python](https://www.eclipse.org/paho/clients/python/)
+- **PubSubClient Arduino Library**: [github.com/knolleary/pubsubclient](https://github.com/knolleary/pubsubclient)
+- **HiveMQ MQTT Essentials**: [hivemq.com/mqtt-essentials](https://www.hivemq.com/mqtt-essentials/)
+
+---
+
 **Enjoy your RaspberryPints installation! Cheers! 🍺**
-
-
-
-
-__Known Bugs:__
-
-	All versions:
-	- Firefox has difficulty rendering our SRM image masks correctly.
-		Due to a deficiency in the way Firefox handles z-values with images and is a known
-		issue within the MDN. Not sure if this is an issue any more...
-
-
-__Version History:__
-
-	v2025.10.1:
-		- Updated readme. 
 	
 	v2019.12.01
 		- RandR+ version
