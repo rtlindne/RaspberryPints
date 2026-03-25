@@ -113,6 +113,25 @@ init() {
     #CMDLINE="curl -L https://raw.githubusercontent.com/rtlindne/RaspberryPints/master/util/installRaspberryPints | sudo bash"
     CMDLINE="curl -L install.rpints.com | sudo bash"
     SCRIPTNAME="${THISSCRIPT%%.*}"
+    
+    RELEASE="0"
+    if command -v lsb_release >/dev/null 2>&1; then
+	 # Use lsb_release if available
+	 RELEASE=$(lsb_release -r | awk '{print $2}')
+	elif [ -f /etc/os-release ]; then
+	 # Fallback to /etc/os-release if lsb_release is not available
+	 RELEASE=$(grep VERSION_ID /etc/os-release | cut -d\" -f2)
+	fi
+	
+	# Check if it's Pi OS 4 or higher
+	if (( $(echo "$RELEASE >= 10" | bc -l) )); then
+	 BOOT_CONFIG_FILE="/boot/firmware/config.txt"
+	fi
+    
+    #Just in case, lets grep, leave the code above incase we have more things we need to adjust
+	if cat $BOOT_CONFIG_FILE | grep -iq "/boot/firmware/config.txt" ; then
+	 BOOT_CONFIG_FILE="/boot/firmware/config.txt"
+	fi
 }
 
 ############
