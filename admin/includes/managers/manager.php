@@ -34,7 +34,7 @@ abstract class Manager {
 			$where = $this->getWhereClause($dbObject);
 			$sql = 	"UPDATE ".$this->getTableName().
 					" SET ".$columns.
-					$where;
+					" ".$where;
 		}else{		
 		    $new = true;
 			$columns = "";
