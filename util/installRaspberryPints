@@ -45,7 +45,8 @@ FLOW_METERS_PACKAGES_JESSIE="arduino python-serial python-mysqldb php5-cli
 					   xdotool dos2unix i2c-tools"
 FLOW_METERS_PACKAGES_BULLSEYE="arduino php-cli 
 					   xdotool dos2unix i2c-tools"
-FLOW_METERS_PACKAGES_BOOKWORK=$FLOW_METERS_PACKAGES_BULLSEYE" python3-pymysql"
+FLOW_METERS_PACKAGES_BOOKWORM=$FLOW_METERS_PACKAGES_BULLSEYE" python3-pymysql"
+FLOW_METERS_PACKAGES_TRIXIE=$FLOW_METERS_PACKAGES_BOOKWORM
 
 # the base github repo name
 DEFAULT_REPO=https://github.com/RaspberryPints/RaspberryPints.git  
@@ -55,6 +56,7 @@ FLOW_METERS_STRETCH_REPO=https://github.com/wyolum/alamode/raw/master/alamode-se
 FLOW_METERS_BUSTER_REPO=https://github.com/wyolum/alamode/raw/master/alamode-setup/stretch-setup
 FLOW_METERS_BULLSEYE_REPO=https://github.com/wyolum/alamode/raw/master/alamode-setup/stretch-setup
 FLOW_METERS_BOOKWORM_REPO=https://raw.githubusercontent.com/rtlindne/RaspberryPints/master/arduino/alamode/bookworm-setup
+FLOW_METERS_TRIXIE_REPO=https://raw.githubusercontent.com/rtlindne/RaspberryPints/master/arduino/alamode/trixie-setup
 
 # RPints Archive from Tobor
 # From: https://www.homebrewtalk.com/forum/threads/version-2-release-raspberrypints-digital-taplist-solution.487694/page-116#post-8609646
@@ -485,7 +487,7 @@ checkOS(){
 	
 	. /etc/os-release
 	
-	if [ "$ID" != "raspbian" ] && [ "$VERSION_CODENAME" != "bookworm" ] && [ -z "$WWWPATH_SET" ] ; then
+	if [ "$ID" != "raspbian" ] && [ "$VERSION_CODENAME" != "bookworm" ] && [ "$VERSION_CODENAME" != "trixie" ] && [ -z "$WWWPATH_SET" ] ; then
 		echo -e "You appear to be running $ID NOT Raspbian, setup may throw unexpected errors"
 		if ! promptYN "Continue Anyways?" "N"; then exit 2; fi	   
 	fi
@@ -1199,13 +1201,16 @@ installFlowmeters(){
 		if echo "$VER_NAME" | grep -iq "^jessie" ; then
 			FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_JESSIE
 		fi
-		# Bullseye and bookworm uses python3 which MySQLdb import is not supported
+		# Bullseye and bookworm and above uses python3 which MySQLdb import is not supported
 		if echo "$VER_NAME" | grep -iq "^bullseye" ; then
 			pip install pymysql
 			FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BULLSEYE
 		fi
 		if echo "$VERSION_CODENAME" | grep -iq "^bookworm" ; then
-			FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BOOKWORK
+			FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BOOKWORM
+		fi
+		if echo "$VERSION_CODENAME" | grep -iq "^trixie" ; then
+			FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_TRIXIE
 		fi
 		
 		# install necessary packages
@@ -1271,6 +1276,9 @@ installFlowmeters(){
 			fi
 			if [ ! -f "${FLOW_METERS_DIRECTORY}/alamode-setup/bookworm-setup" ]; then 
 				wget -O ${bookworm-setup FLOW_METERS_BOOKWORM_REPO}
+			fi
+			if [ ! -f "${FLOW_METERS_DIRECTORY}/alamode-setup/trixie-setup" ]; then 
+				wget -O ${trixie-setup FLOW_METERS_TRIXIE_REPO}
 			fi
 			if [ -f "${FLOW_METERS_DIRECTORY}/alamode-setup/80-alamode.rules" ]; then 
 				FIND_STR=",MODE:=0666"
@@ -1447,13 +1455,16 @@ setupFlowMon(){
 	if echo "$VER_NAME" | grep -iq "^jessie" ; then
 		FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_JESSIE
 	fi
-	# Bullseye and bookworm uses python3 which MySQLdb import is not supported
+	# Bullseye and bookworm and above uses python3 which MySQLdb import is not supported
 	if echo "$VER_NAME" | grep -iq "^bullseye" ; then
 		pip install pymysql
 		FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BULLSEYE
 	fi
 	if echo "$VERSION_CODENAME" | grep -iq "^bookworm" ; then
-		FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BOOKWORK
+		FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_BOOKWORM
+	fi
+	if echo "$VERSION_CODENAME" | grep -iq "^trixie" ; then
+		FLOW_METERS_PACKAGES=$FLOW_METERS_PACKAGES_TRIXIE
 	fi
 	
     if [ ! -f "${INIT_DIRECTORY}/flowmon" ]; then
@@ -1495,6 +1506,11 @@ setupMQTT(){
   	
 	if echo "$VERSION_CODENAME" | grep -iq "^bookworm" ; then
 		#Bookworm/Python3 doesnt need pip for paho-mqtt, it needs apt-get
+		MQTTPACKAGES=$MQTTPACKAGES" python3-paho-mqtt "
+		MQTTPYTHONPACKAGES=""
+	fi
+	if echo "$VERSION_CODENAME" | grep -iq "^trixie" ; then
+		#Trixie/Python3 doesnt need pip for paho-mqtt, it needs apt-get
 		MQTTPACKAGES=$MQTTPACKAGES" python3-paho-mqtt "
 		MQTTPYTHONPACKAGES=""
 	fi
