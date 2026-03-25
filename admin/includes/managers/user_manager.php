@@ -81,7 +81,7 @@ class UserManager extends Manager{
 	}
 	
 	function addRFID($userId, $rfid, $desc){
-		$sql = 	"INSERT INTO userRfids(userId, RFID, description ) " .
+		$sql = 	"INSERT IGNORE INTO userRfids(userId, RFID, description ) " .
 					"VALUES(" . 
 					"'" . $userId . "', " .
 					"'" . $rfid . "', " .
