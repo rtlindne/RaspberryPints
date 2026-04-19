@@ -939,7 +939,7 @@ Once you have beers and kegs in your system, you can assign them to taps:
 **Kicking a Keg** (Marking as Empty):
 1. Go to **Tap List**
 2. Locate the tap to remove
-3. Change Keg to blank (Empty)
+3. Change Keg to Select One
 4. Click **Save** at the bottom of the page to apply changes
 
 ### Calibrating Flow Meters
